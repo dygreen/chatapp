@@ -1,4 +1,5 @@
 const userController = require('../Controllers/user.controller')
+const chatController = require('../Controllers/chat.controller')
 
 module.exports = function (io) {
     // 들어주는 역할
@@ -9,7 +10,26 @@ module.exports = function (io) {
             // 유저 정보 저장
             try {
                 const user = await userController.saveUser(userName, socket.id)
+                const welcomeMessage = {
+                    chat: `${user.name} is joined to this room`,
+                    user: { id: null, name: 'system' },
+                }
+                io.emit('message', welcomeMessage)
                 cb({ ok: true, data: user })
+            } catch (e) {
+                cb({ ok: false, error: e.message })
+            }
+        })
+
+        socket.on('sendMessage', async (message, cb) => {
+            try {
+                // socket id로 유저 찾기
+                const user = await userController.checkUser(socket.id)
+                // 메세지 저장
+                const newMessage = await chatController.saveChat(message, user)
+                // 메세지를 모두에게 알리기
+                io.emit('message', newMessage)
+                cb({ ok: true })
             } catch (e) {
                 cb({ ok: false, error: e.message })
             }
